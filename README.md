@@ -33,7 +33,7 @@ Anyways, I was already familiar with PARI and enjoy using it, so here we are.
 
 ## On to the filters!!
 
-Currently there are two general classes of filter that the script generates:
+Currently there are three general classes of filter that the script generates:
 
 # "Bi-Smooth" interpolation
 
@@ -47,10 +47,25 @@ Since the smoothstep equation can be generalized, the script generates a differe
   - The function which generates these will also accept `-1` for the polynomal number, in which case it just uses a basic Step function.  This is actually **Nearest Neighbor** scaling, (not really a form of smoothstep).
 
 Here is a graph comparing the different generalized smoothstep equations with each other:
-![Chart comparison of generalized smoothstep functions](GeneralizedSmoothStep.png)
+![Chart comparison of generalized smoothstep functions](charts/GeneralizedSmoothStep.png)
 
 So you can see that higher-order versions linger around their endpoints for longer, and have steeper/sharper transitions.
 This makes the highest ones resemble "Nearest neighbor" somewhat more than they do "Bilinear", while still keeping a decent amount of smoothing in between values.
+
+
+# "Logistic" interoplation
+
+These filters operate much the same as Bi-Smooth, but they use yet another type of [sigmoid function](https://en.wikipedia.org/wiki/Sigmoid_function)(TL;DR: functions that form an S-shape, like smoothstep) known as the [Logistic Function](https://en.wikipedia.org/wiki/Logistic_function).
+
+Again this can be parameterized by changing its **k** value, where larger k makes steeper curve with sharper transition.
+This is far more convenient to tweak to arbitrary values compared to fixed increments of smoothstep polynomials which become unwieldy at higher levels.
+
+Since this function normally approaches its limits *asymptotically*, I've modified the function by scaling it to go from `f(0)=0`, and `f(1)=1`, regardless of k value.  This variation is called `logisticstep` in the script.
+
+Here is a chart comparing `logisticstep` across a range of k values: (k = 6 to 36, step 6)
+![Chart comparison of logisticstep k values](charts/logistic.png) 
+
+In the previous case of smoothstep filters, #6 was the highest-order(steepest) one that I bothered to implement, but with the logistic function we can easily make it much steeper.
 
 
 # "Edge Detect" filters, including bi-smooth interpolation
@@ -89,32 +104,70 @@ I've placed the filter files in appropriately-named subfolders of this repo, jus
 They should then be selectable from the OSD menu for any given core.
 
 
-## How do I use your script?
+## How do I use your scripts?
 The filters have already been generated and provided in this repo, but if you want to try some other variations, additions, etc, then by all means.
 
-1) Install PARI/GP if you haven't yet 
-2) Start the gp interactive interpreter from command line with: `gp GenFilter.gp` to automatically load the script file.
-   - Alternatively you can start `gp` without arguments, load `GenFilter.gp` in a text editor, and just copy/paste the whole file from text editor into gp's prompt.  Useful when editing the script.  Can be pasted multiple times to override previously declared versions of functions.  If only editing a specific function, can paste just that definition rather than whole file.
-   - You can also (re)load script from within gp using the read command: `read("GenFilter.gp")`
-3) The script only *defines* various functions, and doesn't *run* any code on its own.  So you have to call the desired functions from the gp prompt:
+1) Install PARI/GP if you haven't yet
+2) Start the gp interactive interpreter from command line with: `gp readall.gp` to automatically load the script file.
+   - Alternatively you can start `gp` without arguments, load a specific script in a text editor, and just copy/paste the whole file from text editor into gp's prompt.  Useful for editing.  Can be pasted multiple times to override previous definitions.  If only editing a specific function, can paste just that definition rather than whole file.
+   - You can also (re)load script from within gp using the read command, eg: `read("readall.gp")`
+3) The scripts generailly just *define* various functions, and don't *run* any code on their own.  So you have to call the desired functions from the gp prompt.
+
+**NOTE:** PARI/GP is cross platform but this script was developed on Linux, and relies on at least one shell command which might need altering to run on another platform.
 
 
+I've split the functions for specific filter types into their own script files.  Here is summary of the files:
+  - `readall.gp` This is just used to include all the other scripts which generate filters.  includes the following scripts: 
+    - `utilities.gp` Some general functions for writing filters or CSV files which other scripts depend on
+    - `smoothstep.gp` Functions for generating BiSmooth filters
+    - `logistic.gp` Functions for generating Logistic filters
+    - `edge_detect.gp` Function for generating (also depends on `smoothstep.gp`)
+  - `misc.gp` Just a couple extra functions here which I may mess with later
+  - `bicubic.gp` Simple test/example of generating coefficients for bicubic interpolation, doesn't generate filter file, just prints coeffs.
+
+
+## List of main output functions per script, with example calls
+
+## `smoothstep.gp`
 ```
 make_bismooth_filters()
 ```
 Generates `BiSmooth[i].txt` filter files for `i` in range `-1 to 6`
 There are some optional parameters for this function, but only relevant for completely different polyphase filter configuration (different # of phases etc).
 
+-------------------------
 
+```
+create_csv("smoothstep.csv", smoothstep, Argname="S", Argmin=0, Argmax=6, Argstep=1, Xmin=0, Xmax=1, Xstep=0.01);
+```
+To re-create the csv used in making the charts.
+
+## `logistic.gp`
+```
+make_logistic_filters(kmin=4, kmax=24, kstep=2);
+```
+Generates the filter files with the given range of k values.
+
+-------------------------
+
+```
+create_csv("logistic.csv", logisticstep, Argname="k", Argmin=6, Argmax=36, Argstep=6, Xmin=0, Xmax=1, Xstep=0.01);
+```
+To re-create the csv used in making the charts.
+  
+## `edge_detect.gp`
 ```
 make_edge_filters(smooth_i=1, emin=8, emax=128, estep=8, bmin=0, bmax=128, bstep=8)
 ```
-This generates the edge-detection style of filters over a combined range of **E** and **B** values, for a single **S** (`smooth_i`) value.
+Generates the edge-detection style of filters over a combined range of **E** and **B** values, for a single **S** (`smooth_i`) value.
 
 If you just want the full brightness filters for example, set both `bmin` and `bmax` to 128.
 
 The filters in repo were generated by calling 8 times, once for each **S** value: from `make_edge_filters(-1)` to `make_edge_filters(6)`, using the default args for **E** and **B** ranges.
 
+## `bicubic.gp`
+**None.**  Loading this script just automatically prints out the coefficients for bicubic interpolation as a test. 
 
-**NOTE:** PARI/GP is cross platform but this script was developed on Linux, and relies on at least one shell command which might need altering to run on another platform.
+Does not write to an actual filter file (a bicubic filter is already included in MiSTer).
+
 
