@@ -28,7 +28,7 @@ make_edge_filters(smooth_i=1, emin=8, emax=128, estep=8, bmin=0, bmax=128, bstep
         ),
         f(x,y,t) = mix(x, y, smoothstep(t, smooth_i) )
       );
-      // Don't write filters for B<Amax (too dark) or B > 255 (will cause overflow artifacts, black grid lines in output)
+      \\ Don't write filters for B<Amax (too dark) or B > 255 (will cause overflow artifacts, black grid lines in output)
       if (B >= Amax && B <= 255,
         newfile(filename);
         write(filename, Strprintf("# %d coefficient => 1x color value (identity output)", Amax));
